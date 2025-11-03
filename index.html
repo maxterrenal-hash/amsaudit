@@ -80,6 +80,8 @@
   /* Make Organism & Notes inputs match dropdown size */
   input[id^="micro_"][id$="_org"],
   input[id^="micro_"][id$="_note"]{height:48px}
+  /* Make all date inputs align with dropdowns (width/arrow spacing/height) */
+  input[type="date"]{padding-right:36px; min-width:0; height:48px}
 </style>
 </head>
 <body>
@@ -391,12 +393,14 @@ function buildAntimicrobialCard(idx){
     const drugSel  = cellDrug.querySelector(`#abx_${idx}_drug`);
     const drugSpec = cellDrug.querySelector(`#abx_${idx}_drugSpecify`);
     if(classSel && drugSel){
-      classSel.addEventListener('change', ()=>{
+      const onCls = ()=>{
         if(classSel.value === 'Monitored') refillDrugOptions(drugSel, MONITORED_DRUGS);
         else if(classSel.value === 'Restricted') refillDrugOptions(drugSel, RESTRICTED_DRUGS);
         else refillDrugOptions(drugSel, []);
         if(drugSpec){ drugSpec.classList.add('hidden'); drugSpec.value=''; }
-      });
+      };
+      classSel.addEventListener('change', onCls);
+      setTimeout(onCls, 0);
     }
   }catch(e){ console.warn('Wiring class->drug failed', e); }
   const cellStart= el("div");
@@ -440,8 +444,8 @@ function buildAntimicrobialCard(idx){
     (()=>{const s=el("select",{id:`abx_${idx}_diagPrimary`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); DIAG_PRIMARY.forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v)])));
       s.addEventListener("change",()=>updateDiagSecondary(idx)); return s;})()
   );
-  const diagSys = el("div"); diagSys.append(el("label",{},[document.createTextNode("System / Site")]), el("select",{id:`abx_${idx}_diagSystem`},[el("option",{value:""},[document.createTextNode("Select")])]))
-  const diagSub = el("div"); diagSub.append(el("label",{},[document.createTextNode("Sub-site / Specific")]), el("select",{id:`abx_${idx}_diagSub`},[el("option",{value:""},[document.createTextNode("Select")])]))
+  const diagSys = el("div"); diagSys.append(el("label",{},[document.createTextNode("System / Site")]), (()=>{const s=el("select",{id:`abx_${idx}_diagSystem`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); s.disabled=true; return s;})())
+  const diagSub = el("div"); diagSub.append(el("label",{},[document.createTextNode("Sub-site / Specific")]), (()=>{const s=el("select",{id:`abx_${idx}_diagSub`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); s.disabled=true; return s;})())
   
   // Row 4: Type of Indication, Reason in note?, Guidelines Compliance + Stop/Review documented
   const row4 = el("div",{class:"grid abx-row4", style:"margin-top:12px"});

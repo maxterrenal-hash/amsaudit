@@ -52,7 +52,7 @@
   <header>
     <div>
       <div class="title">Antimicrobial Use Point Prevalence Survey</div>
-      <div class="sub">Same layout as your Hand Hygiene app, but with more meds and fewer excuses.</div>
+      <div class="sub">AMU-PPS • OsMak</div>
     </div>
     <div>
       <button class="ghost" id="btnReset">Reset</button>
@@ -60,7 +60,7 @@
     </div>
   </header>
 
-  <!-- Header block -->
+  <!-- Audit Header -->
   <section class="section">
     <h2>Audit Header</h2>
     <div class="grid cols-2">
@@ -101,68 +101,70 @@
     </div>
   </section>
 
-  <!-- Patient Info -->
+  <!-- Patient Information -->
   <section class="section">
     <h2>Patient Information</h2>
-    <div class="grid cols-3">
+    <div class="grid">
       <div><label class="req">Hospital Number</label><input id="hospNo" placeholder="e.g. 23-001234"></div>
+    </div>
+    <div class="grid cols-3">
       <div><label>Age (Years) <span class="hint">≥ 2 years</span></label><input id="ageYears" type="number" min="0" step="1"></div>
       <div><label>Age (Months) <span class="hint">1–23 months</span></label><input id="ageMonths" type="number" min="1" max="23" step="1"></div>
       <div><label>Age (Days) <span class="hint">&lt; 1 month</span></label><input id="ageDays" type="number" min="0" max="30" step="1"></div>
     </div>
-    <div class="note" style="margin-top:6px">Fill only one of Years, Months, or Days. The app enforces exclusivity like a jealous pager.</div>
+    <div class="note" style="margin-top:6px">Fill only one of Years, Months, or Days (exclusive).</div>
   </section>
 
-  <!-- Diagnostics -->
+  <!-- Diagnostics & Biomarkers -->
   <section class="section">
     <h2>Diagnostics & Biomarkers</h2>
+    <!-- Row: biomarker-based? | biomarker type | fluid sample -->
     <div class="grid cols-3">
       <div>
-        <label class="req">Treatment based on Biomarker data or WBC?</label>
+        <label class="req">Treatment based on biomarker or WBC?</label>
         <select id="biomarkerYesNo">
           <option value="">Select</option><option>No</option><option>Yes</option>
         </select>
       </div>
-      <div id="biomarkerTypeWrap" class="hidden">
-        <label>Which biomarker</label>
-        <select id="biomarkerType">
+      <div>
+        <label>Biomarker</label>
+        <select id="biomarkerType" disabled>
           <option value="">Select</option><option>CRP</option><option>PCT</option><option>WBC</option><option>Others</option>
         </select>
         <input id="biomarkerTypeOther" class="hidden" placeholder="Specify biomarker">
       </div>
-      <div id="bioSampleWrap" class="hidden">
-        <label>Type of Biological Fluids Sample</label>
-        <select id="bioSample">
+      <div>
+        <label>Fluid sample</label>
+        <select id="bioSample" disabled>
           <option value="">Select</option><option>Blood</option><option>Urine</option><option>Others</option>
         </select>
         <input id="bioSampleOther" class="hidden" placeholder="Specify sample">
       </div>
     </div>
 
-    <div class="divider"></div>
-
-    <div class="grid cols-3">
+    <!-- Row: culture done? | specimen -->
+    <div class="grid cols-2" style="margin-top:12px">
       <div>
         <label class="req">Culture done?</label>
         <select id="cultureDone"><option value="">Select</option><option>No</option><option>Yes</option></select>
       </div>
-      <div id="cultureTypeWrap" class="hidden">
-        <label>Specimen type</label>
-        <select id="cultureType">
+      <div>
+        <label>Specimen</label>
+        <select id="cultureType" disabled>
           <option value="">Select</option>
           <option>Blood</option><option>Urine</option><option>Stool</option><option>CSF</option>
-          <option>Wound</option><option>Sputum/Bronchial aspirate</option><option>Other</option>
+          <option>Wound</option><option>Sputum.Bronchial aspirate</option><option>Other</option>
         </select>
         <input id="cultureTypeOther" class="hidden" placeholder="Specify specimen">
       </div>
     </div>
   </section>
 
-  <!-- Antimicrobial Cards -->
+  <!-- Antimicrobials -->
   <section class="section">
     <h2>Antimicrobials (up to 5)</h2>
     <div class="accordion" id="abxAccordion"></div>
-    <div class="note" style="margin-top:10px">First card expanded. The rest behave like residents after 24 hours: collapsed.</div>
+    <div class="note" style="margin-top:10px">First card expanded; the rest collapsed.</div>
   </section>
 
   <!-- Microbiology -->
@@ -174,7 +176,7 @@
   <!-- History -->
   <section class="section">
     <h2>Recent History</h2>
-    <div class="grid cols-3">
+    <div class="grid cols-2">
       <div>
         <label class="req">Previous hospitalization &lt; 3 months</label>
         <select id="prevHosp"><option value="">Select</option><option>Yes-ICU</option><option>Yes-Other</option><option>No</option><option>Unknown</option></select>
@@ -243,9 +245,7 @@ const DIAG_THERAPEUTIC = {
 const DIAG_PROPH = ["CNS","EYE","ENT","RESP","CVS","GI","SSTBJ","UTI","GUOB","No defined site."];
 const DIAG_NEONATES = ["MP-MAT","NEO-MP","CLD"];
 
-const INDICATIONS = [
-  "CAI","HAI","SP","MP","OTH","UNK"
-];
+const INDICATIONS = ["CAI","HAI","SP","MP","OTH","UNK"];
 const HAI_TYPES = ["CRBSI","VAP","CAUTI","HAP","CDAD","MDRO"];
 
 const RESISTANCE = ["MRSA","MRCoNS","PNSP","MLS","VRE","ESBL","3GCREB","CRE","ESBL-NF","CR-NF","other MDRO"];
@@ -254,7 +254,7 @@ const MISSED_REASONS = ["stock out","could not purchase","patient refused","othe
 
 /* ======== Helpers ======== */
 const $ = s => document.querySelector(s);
-const el = (t, a={}, kids=[])=>{const n=document.createElement(t);for(const [k,v] of Object.entries(a)){k==="class"?n.className=v:k==="html"?n.innerHTML=v:n.setAttribute(k,v)} kids.forEach(k=>n.appendChild(k));return n;};
+const el = (t, a={}, kids=[])=>{const n=document.createElement(t);for(const [k,v] of Object.entries(a)){if(k==="class")n.className=v;else if(k==="html")n.innerHTML=v;else n.setAttribute(k,v)} kids.forEach(k=>n.appendChild(k));return n;};
 const today = ()=> new Date().toISOString().slice(0,10);
 
 /* ======== UI builders ======== */
@@ -297,144 +297,73 @@ function buildMissedReasons(idBase){
 function buildAntimicrobialCard(idx){
   const item = el("div",{class:"acc-item"+(idx===0?" open":"")});
   const head = el("button",{class:"acc-head", type:"button"});
-  head.append(
-    el("span",{class:"name"},[document.createTextNode(`Antimicrobial ${idx+1}`)]),
-    el("span",{class:"pill"},[document.createTextNode(idx===0?"Expanded":"Collapsed")])
-  );
+  head.append(el("span",{class:"name"},[document.createTextNode(`Antimicrobial ${idx+1}`)]), el("span",{class:"pill"},[document.createTextNode(idx===0?"Expanded":"Collapsed")]));
   head.addEventListener("click", ()=> item.classList.toggle("open"));
   const body = el("div",{class:"acc-body"});
 
-  // Row: Class, Start date, Dose, Unit, Doses/day, Route
+  /* Row: Class, Drug, Start date, Dose */
   const row1 = el("div",{class:"grid cols-4"});
-  const cellClass = el("div");
-  cellClass.append(
-    el("label",{class:"req"},[document.createTextNode("Monitored or Restricted")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_class`});
-      ["","Monitored","Restricted"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
+  const cellClass = el("div"); cellClass.append(el("label",{class:"req"},[document.createTextNode("Monitored or Restricted")]),
+    (()=>{const s=el("select",{id:`abx_${idx}_class`});["","Monitored","Restricted"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")])));return s;})()
   );
+  const cellDrug = el("div"); cellDrug.append(el("label",{class:"req"},[document.createTextNode("Antimicrobial")]), buildAntimicrobialSelect(`abx_${idx}`));
+  const cellStart= el("div"); cellStart.append(el("label",{class:"req"},[document.createTextNode("Start date")]), el("input",{id:`abx_${idx}_start`,type:"date"}));
+  const cellDose = el("div"); cellDose.append(el("label",{class:"req"},[document.createTextNode("Single Unit Dose")]), el("input",{id:`abx_${idx}_dose`,type:"number",min:"0",step:"0.001"}));
 
-  const cellDrug = el("div");
-  cellDrug.append(
-    el("label",{class:"req"},[document.createTextNode("Antimicrobial")]),
-    buildAntimicrobialSelect(`abx_${idx}`)
-  );
-  const cellStart= el("div");
-  cellStart.append(
-    el("label",{class:"req"},[document.createTextNode("Start date")]),
-    el("input",{id:`abx_${idx}_start`,type:"date"})
-  );
-  const cellDose = el("div");
-  cellDose.append(
-    el("label",{class:"req"},[document.createTextNode("Single Unit Dose")]),
-    el("input",{id:`abx_${idx}_dose`,type:"number",min:"0",step:"0.001"})
-  );
-
+  /* Row: Unit, Doses/day, Route */
   const row2 = el("div",{class:"grid cols-4", style:"margin-top:12px"});
-  const cellUnit = el("div");
-  cellUnit.append(
-    el("label",{class:"req"},[document.createTextNode("Unit")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_unit`});
-      ["","g","mg","IU","MU"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
+  const cellUnit = el("div"); cellUnit.append(el("label",{class:"req"},[document.createTextNode("Unit")]),
+    (()=>{const s=el("select",{id:`abx_${idx}_unit`});["","g","mg","IU","MU"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")])));return s;})()
   );
-  const cellPerDay = el("div");
-  cellPerDay.append(
-    el("label",{class:"req"},[document.createTextNode("Doses/day")]),
-    el("input",{id:`abx_${idx}_perday`,type:"number",min:"0",step:"1"})
-  );
-  const cellRoute = el("div");
-  cellRoute.append(
-    el("label",{class:"req"},[document.createTextNode("Route")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_route`});
-      ["","IM","IV","O","R"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
+  const cellPerDay = el("div"); cellPerDay.append(el("label",{class:"req"},[document.createTextNode("Doses/day")]), el("input",{id:`abx_${idx}_perday`,type:"number",min:"0",step:"1"}));
+  const cellRoute = el("div"); cellRoute.append(el("label",{class:"req"},[document.createTextNode("Route")]),
+    (()=>{const s=el("select",{id:`abx_${idx}_route`});["","IM","IV","O","R"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")])));return s;})()
   );
 
-  // Diagnosis block
-  const diagBlock = el("div",{class:"section", style:"padding:12px; margin:12px 0 0"});
-  const diagTop = el("div",{class:"grid cols-3"});
-  const diag1 = el("div");
-  diag1.append(
-    el("label",{class:"req"},[document.createTextNode("Diagnosis")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_diagPrimary`});
-      s.appendChild(el("option",{value:""},[document.createTextNode("Select")]));
-      DIAG_PRIMARY.forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v)])));
-      s.addEventListener("change",()=>updateDiagSecondary(idx));
-      return s;})()
+  /* Diagnosis block */
+  const diagTop = el("div",{class:"grid cols-3", style:"margin-top:12px"});
+  const diag1 = el("div"); diag1.append(el("label",{class:"req"},[document.createTextNode("Diagnosis")]),
+    (()=>{const s=el("select",{id:`abx_${idx}_diagPrimary`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); DIAG_PRIMARY.forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v)])));
+      s.addEventListener("change",()=>updateDiagSecondary(idx)); return s;})()
   );
-  const diagSys = el("div");
-  diagSys.append(
-    el("label",[document.createTextNode("System / Site")]),
-    el("select",{id:`abx_${idx}_diagSystem`},[el("option",{value:""},[document.createTextNode("Select")])])
-  );
-  const diagSub = el("div");
-  diagSub.append(
-    el("label",[document.createTextNode("Sub-site / Specific")]),
-    el("select",{id:`abx_${idx}_diagSub`},[el("option",{value:""},[document.createTextNode("Select")])])
-  );
+  const diagSys = el("div"); diagSys.append(el("label",[document.createTextNode("System / Site")]), el("select",{id:`abx_${idx}_diagSystem`},[el("option",{value:""},[document.createTextNode("Select")])]));
+  const diagSub = el("div"); diagSub.append(el("label",[document.createTextNode("Sub-site / Specific")]), el("select",{id:`abx_${idx}_diagSub`},[el("option",{value:""},[document.createTextNode("Select")])]));
   diagTop.append(diag1,diagSys,diagSub);
 
-  // Indications & compliance
+  /* Indications & compliance */
   const indRow = el("div",{class:"grid cols-4", style:"margin-top:12px"});
-  const cellInd = el("div");
-  cellInd.append(
-    el("label",{class:"req"},[document.createTextNode("Type of Indication")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_indication`});
-      s.appendChild(el("option",{value:""},[document.createTextNode("Select")]));
+  const cellInd = el("div"); cellInd.append(el("label",{class:"req"},[document.createTextNode("Type of Indication")]),
+    (()=>{const s=el("select",{id:`abx_${idx}_indication`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")]));
       INDICATIONS.forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v)])));
-      s.addEventListener("change",()=>toggleHAI(idx));
-      return s;})()
+      s.addEventListener("change",()=>toggleHAI(idx)); return s;})()
   );
-  const cellHai = el("div",{id:`abx_${idx}_haiWrap`, class:"hidden"});
-  cellHai.append(
-    el("label",[document.createTextNode("HAI subtype")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_haiType`});
-      s.appendChild(el("option",{value:""},[document.createTextNode("Select")]));
-      HAI_TYPES.forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v)])));
-      return s;})()
+  const cellHai = el("div",{id:`abx_${idx}_haiWrap`, class:"hidden"}); cellHai.append(el("label",[document.createTextNode("HAI subtype")]),
+    (()=>{const s=el("select",{id:`abx_${idx}_haiType`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); HAI_TYPES.forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v)]))); return s;})()
   );
-  const cellReason = el("div");
-  cellReason.append(
-    el("label",{class:"req"},[document.createTextNode("Reason in note")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_reasonNote`});
-      ["","Yes","No"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
+  const cellReason = el("div"); cellReason.append(el("label",{class:"req"},[document.createTextNode("Reason in note")]),
+    (()=>{const s=el("select",{id:`abx_${idx}_reasonNote`});["","Yes","No"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")])));return s;})()
   );
-  const cellGuide = el("div");
-  cellGuide.append(
-    el("label",{class:"req"},[document.createTextNode("Guidance compliance")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_guide`});
-      ["","Y","N","NA","NI"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
+  const cellGuide = el("div"); cellGuide.append(el("label",{class:"req"},[document.createTextNode("Guidance compliance")]),
+    (()=>{const s=el("select",{id:`abx_${idx}_guide`});["","Y","N","NA","NI"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")])));return s;})()
   );
-  const cellStop = el("div");
-  cellStop.append(
-    el("label",{class:"req"},[document.createTextNode("Stop/Review date documented?")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_stopdoc`});
-      ["","Yes","No"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
+  const cellStop = el("div"); cellStop.append(el("label",{class:"req"},[document.createTextNode("Stop/Review date documented?")]),
+    (()=>{const s=el("select",{id:`abx_${idx}_stopdoc`});["","Yes","No"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")])));return s;})()
   );
-  const cellMissed = el("div");
-  cellMissed.append(
-    el("label",[document.createTextNode("N missed doses")]),
-    el("input",{id:`abx_${idx}_missed`,type:"number",min:"0",step:"1",value:"0"})
-  );
-  const cellMissedWhy = el("div");
-  cellMissedWhy.append(
-    el("label",[document.createTextNode("Reason(s)")]),
-    buildMissedReasons(`abx_${idx}`)
-  );
-  const cellTreat = el("div");
-  cellTreat.append(
-    el("label",{class:"req"},[document.createTextNode("Treatment")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_treat`});
-      ["","Empirical","Targeted"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
+  const cellMissed = el("div"); cellMissed.append(el("label",[document.createTextNode("N missed doses")]), el("input",{id:`abx_${idx}_missed`,type:"number",min:"0",step:"1",value:"0"}));
+  const cellMissedWhy = el("div"); cellMissedWhy.append(el("label",[document.createTextNode("Reason(s)")]), buildMissedReasons(`abx_${idx}`));
+  const cellTreat = el("div"); cellTreat.append(el("label",{class:"req"},[document.createTextNode("Treatment")]),
+    (()=>{const s=el("select",{id:`abx_${idx}_treat`});["","Empirical","Targeted"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")])));return s;})()
   );
 
   row1.append(cellClass,cellDrug,cellStart,cellDose);
-  row2.append(cellUnit,cell
+  row2.append(cellUnit,cellPerDay,cellRoute);
+  indRow.append(cellInd,cellHai,cellReason,cellGuide,cellStop,cellMissed,cellMissedWhy,cellTreat);
+
+  body.append(row1,row2,diagTop,indRow);
+  item.append(head,body);
+  return item;
+}
+
 function buildMicroCard(i){
   const card = el("div",{class:"section",style:"margin:0"});
   const hdr = el("div",{style:"display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"});
@@ -463,7 +392,7 @@ function updateDiagSecondary(idx){
 
 function toggleHAI(idx){
   const val = $(`#abx_${idx}_indication`).value;
-  $(`#abx_${idx}_haiWrap`).classList.toggle("hidden", val!=="Healthcare Associated Infection");
+  $(`#abx_${idx}_haiWrap`).classList.toggle("hidden", val!=="HAI");
 }
 
 /* ======== Init ======== */
@@ -471,10 +400,13 @@ function toggleHAI(idx){
   buildAreaList();
   $("#date").value = today();
 
-  // Biomarker toggles
+  // Biomarker controls: keep visible; enable/disable based on Yes/No
   $("#biomarkerYesNo").addEventListener("change", e=>{
-    const show = e.target.value==="Yes";
-    ["#biomarkerTypeWrap","#bioSampleWrap"].forEach(s=>$(s).classList.toggle("hidden", !show));
+    const on = e.target.value==="Yes";
+    $("#biomarkerType").disabled = !on;
+    $("#bioSample").disabled = !on;
+    $("#biomarkerTypeOther").classList.toggle("hidden", !(on && $("#biomarkerType").value==="Others"));
+    $("#bioSampleOther").classList.toggle("hidden", !(on && $("#bioSample").value==="Others"));
   });
   $("#biomarkerType").addEventListener("change", e=>{
     $("#biomarkerTypeOther").classList.toggle("hidden", e.target.value!=="Others");
@@ -483,9 +415,11 @@ function toggleHAI(idx){
     $("#bioSampleOther").classList.toggle("hidden", e.target.value!=="Others");
   });
 
-  // Culture toggles
+  // Culture controls
   $("#cultureDone").addEventListener("change", e=>{
-    $("#cultureTypeWrap").classList.toggle("hidden", e.target.value!=="Yes");
+    const on = e.target.value==="Yes";
+    $("#cultureType").disabled = !on;
+    $("#cultureTypeOther").classList.toggle("hidden", !(on && $("#cultureType").value==="Other"));
   });
   $("#cultureType").addEventListener("change", e=>{
     $("#cultureTypeOther").classList.toggle("hidden", e.target.value!=="Other");
@@ -502,7 +436,7 @@ function toggleHAI(idx){
   // Buttons
   $("#btnReset").addEventListener("click", ()=>{ if(confirm("Clear all fields?")) location.reload(); });
   ["#btnSubmit","#btnSubmit2"].forEach(sel=> $(sel).addEventListener("click", submitForm));
-  $("#btnPreview").addEventListener("click", previewJSON);
+  $("#btnPreview").addEventListener("click", previewJSON));
 })();
 
 /* ======== Validation & Payload ======== */
@@ -510,7 +444,7 @@ function err(m){ alert(m); }
 
 function collectAndValidate(){
   const header = {
-    auditor: $("#auditor").value.trim(),
+    auditor: $("#auditor").value,
     area: $("#area").value,
     date: $("#date").value,
     shift: $("#shift").value,
@@ -532,17 +466,18 @@ function collectAndValidate(){
 
   // Biomarker
   const biomarkerBased = $("#biomarkerYesNo").value || "No";
-  const biomarkerType = biomarkerBased==="Yes" ? $("#biomarkerType").value : "";
-  const biomarkerTypeOther = biomarkerBased==="Yes" && biomarkerType==="Others" ? $("#biomarkerTypeOther").value.trim() : "";
-  const bioSample = biomarkerBased==="Yes" ? $("#bioSample").value : "";
-  const bioSampleOther = biomarkerBased==="Yes" && bioSample==="Others" ? $("#bioSampleOther").value.trim() : "";
+  const biomarkerType = $("#biomarkerType").disabled ? "" : $("#biomarkerType").value;
+  const biomarkerTypeOther = (!$("#biomarkerType").disabled && $("#biomarkerType").value==="Others") ? $("#biomarkerTypeOther").value.trim() : "";
+  const bioSample = $("#bioSample").disabled ? "" : $("#bioSample").value;
+  const bioSampleOther = (!$("#bioSample").disabled && $("#bioSample").value==="Others") ? $("#bioSampleOther").value.trim() : "";
+
   if(biomarkerBased==="Yes" && !biomarkerType) return err("Specify biomarker type."), null;
   if(biomarkerBased==="Yes" && !bioSample) return err("Specify biological sample."), null;
 
   // Culture
   const cultureDone = $("#cultureDone").value || "";
-  const cultureType = cultureDone==="Yes" ? $("#cultureType").value : "";
-  const cultureTypeOther = cultureDone==="Yes" && cultureType==="Other" ? $("#cultureTypeOther").value.trim() : "";
+  const cultureType = $("#cultureType").disabled ? "" : $("#cultureType").value;
+  const cultureTypeOther = (!$("#cultureType").disabled && $("#cultureType").value==="Other") ? $("#cultureTypeOther").value.trim() : "";
   if(cultureDone==="Yes" && !cultureType) return err("Select culture specimen type."), null;
 
   // Antimicrobials
@@ -585,7 +520,7 @@ function collectAndValidate(){
     if(diagP==="Therapeutic" && !diagS) return err(`Antimicrobial ${i+1}: select system/site.`), null;
     if(diagP==="Therapeutic" && (DIAG_THERAPEUTIC[diagS]||[]).length && !diagSub) return err(`Antimicrobial ${i+1}: select sub-site.`), null;
     if(!indic) return err(`Antimicrobial ${i+1}: indication type required.`), null;
-    if(indic==="Healthcare Associated Infection" && !haiType) return err(`Antimicrobial ${i+1}: choose HAI subtype.`), null;
+    if(indic==="HAI" && !haiType) return err(`Antimicrobial ${i+1}: choose HAI subtype.`), null;
     if(!reasonNote) return err(`Antimicrobial ${i+1}: Reason in note required.`), null;
     if(!guide) return err(`Antimicrobial ${i+1}: Guidance compliance required.`), null;
     if(!stopdoc) return err(`Antimicrobial ${i+1}: Stop/Review documentation required.`), null;
@@ -600,18 +535,18 @@ function collectAndValidate(){
       unit, dosesPerDay: Number(perday), route,
       diagnosis: { primary: diagP, system: diagS || "", sub: diagSub || "" },
       indication: indic,
-      haiSubtype: indic==="Healthcare Associated Infection" ? haiType : "",
+      haiSubtype: indic==="HAI" ? haiType : "",
       reasonInNote: reasonNote,
       guidanceCompliance: guide,
       stopReviewDocumented: stopdoc,
       missedDoses: Number(missed),
-      missedReasons, // array
+      missedReasons,
       treatment: treat
     });
   }
   if(antimicrobials.length===0) return err("Enter at least one antimicrobial card."), null;
 
-  // Microorganisms
+  // Microorganisms (optional)
   const microorganisms = [];
   for(let i=0;i<3;i++){
     const org = $(`#micro_${i}_org`).value.trim();

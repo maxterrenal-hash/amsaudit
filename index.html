@@ -75,6 +75,11 @@
   /* Make Antimicrobial Row 4 auto-fill full width and reflow when a cell is hidden */
   .grid.abx-row4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
   @media(max-width:639px){.grid.abx-row4{grid-template-columns:1fr}}
+  /* Make Hospital Number input match dropdown size */
+  #hospNo{height:48px}
+  /* Make Organism & Notes inputs match dropdown size */
+  input[id^="micro_"][id$="_org"],
+  input[id^="micro_"][id$="_note"]{height:48px}
 </style>
 </head>
 <body>

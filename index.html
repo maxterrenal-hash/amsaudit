@@ -736,11 +736,32 @@ function previewJSON(){
   ">":"&gt;","&":"&amp;"}[s]))+"</pre>");
 }
 
-async function submitForm(){
-  const payload = collectAndValidate(); if(!payload) return;
-  if(!/^https:\/\/script\.google\.com\/macros\/s\//.test(BACKEND_URL)) return alert("Set BACKEND_URL to your deployed Apps Script URL first.");
+async function submitForm(payload){
+  const start = Date.now();
   try{
-    const res = await fetch(BACKEND_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' }, // avoid CORS preflight
+      body: JSON.stringify(payload)
+    });
+    const elapsed = Date.now() - start;
+    if(!res.ok){
+      const text = await res.text().catch(()=>'<no-body>');
+      throw new Error(`HTTP ${res.status} ${res.statusText} after ${elapsed}ms — Body: ${text.slice(0,300)}`);
+    }
+    // Attempt JSON parse; fall back to text
+    const ct = res.headers.get('content-type') || '';
+    if(ct.includes('application/json')){
+      return await res.json();
+    } else {
+      const text = await res.text();
+      try { return JSON.parse(text); } catch { return { ok:false, error:'Non-JSON response', raw:text }; }
+    }
+  }catch(err){
+    console.error('[Submit] Network/CORS error:', err);
+    throw err; // upstream will show toast
+  }
+},body:JSON.stringify(payload)});
     const text = await res.text();
     let msg="Submitted."; try{const j=JSON.parse(text); if(j.message) msg=j.message;}catch{}
     alert(msg);

@@ -779,6 +779,58 @@ function runTests(){
   const badge = document.getElementById('testBadge');
   if(badge) badge.textContent = 'Tests: '+results.join('  |  ');
 }
+// === Dropdown fix block: helpers & maps ===
+(function(){
+  if (typeof fillSelectOptions !== 'function') {
+    window.fillSelectOptions = function(sel, options, placeholder){
+      placeholder = placeholder || 'Select';
+      if (!sel) return;
+      sel.innerHTML = '';
+      sel.appendChild(el('option',{value:''},[document.createTextNode(placeholder)]));
+      (options||[]).forEach(function(v){ sel.appendChild(el('option',{value:v},[document.createTextNode(v)])); });
+    };
+  }
+  window.DIAG_SYSTEMS = {
+    'Therapeutic': ['CNS','EYE','ENT','RESP','CVS','GI','SSTBJ','UTI','GUOB','No defined site.'],
+    'Prophylaxis': ['CNS','EYE','ENT','RESP','CVS','GI','SSTBJ','UTI','GUOB','No defined site.'],
+    'Neonates': ['MP-MAT','NEO-MP','CLD']
+  };
+  window.DIAG_SUBS = {
+    'ENT': ['ENT','AOM'],
+    'RESP': ['LUNG','URTI','Bron','Pneu','COVID-19','TB','CF'],
+    'GI': ['GI','IA','CDIF'],
+    'SSTBJ': ['SST','BJ'],
+    'UTI': ['Cys','Pye','ASB'],
+    'GUOB': ['OBGY','GUM','Syph'],
+    'No defined site.': ['BAC','SEPSIS','Malaria','HIV','PUO','PUO-HO','FN','LYMPH','Sys-DI','Other','UNK','PROK']
+  };
+  window.updateDiagSecondary = function(idx){
+    var p = document.getElementById('abx_'+idx+'_diagPrimary');
+    var sys = document.getElementById('abx_'+idx+'_diagSystem');
+    var sub = document.getElementById('abx_'+idx+'_diagSub');
+    if (!p || !sys || !sub) return;
+    var bucket = p.value || '';
+    var systems = (window.DIAG_SYSTEMS[bucket]||[]);
+    window.fillSelectOptions(sys, systems, 'Select');
+    sys.disabled = systems.length === 0;
+    var setSubs = function(){
+      var sVal = sys.value || '';
+      var subs = (bucket === 'Therapeutic') ? (window.DIAG_SUBS[sVal]||[]) : [];
+      window.fillSelectOptions(sub, subs, subs.length ? 'Select' : '—');
+      sub.disabled = subs.length === 0;
+    };
+    if (!sys.__bindSubs){ sys.addEventListener('change', setSubs); sys.__bindSubs = true; }
+    setSubs();
+  };
+  window.toggleHAI = function(idx){
+    var ind = document.getElementById('abx_'+idx+'_indication');
+    var wrap = document.getElementById('abx_'+idx+'_haiWrap');
+    if (!ind || !wrap) return;
+    var isHAI = (ind.value === 'Healthcare Associated Infection' || ind.value === 'HAI');
+    wrap.classList.toggle('hidden', !isHAI);
+  };
+})();
+// === end dropdown fix block ===
 </script>
 </body>
 </html>

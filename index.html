@@ -75,12 +75,10 @@
   /* Make Antimicrobial Row 4 auto-fill full width and reflow when a cell is hidden */
   .grid.abx-row4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
   @media(max-width:639px){.grid.abx-row4{grid-template-columns:1fr}}
-  /* Make Hospital Number input match dropdown size */
+  /* Match input/select heights */
   #hospNo{height:48px}
-  /* Make Organism & Notes inputs match dropdown size */
   input[id^="micro_"][id$="_org"],
   input[id^="micro_"][id$="_note"]{height:48px}
-  /* Make all date inputs align with dropdowns (width/arrow spacing/height) */
   input[type="date"]{padding-right:36px; min-width:0; height:48px}
 </style>
 </head>
@@ -96,7 +94,7 @@
     </div>
   </header>
 
-  <!-- Audit Header -->
+  <!-- Audit Information -->
   <section class="section">
     <h2>Audit Information</h2>
     <div class="grid cols-2">
@@ -231,35 +229,7 @@ const AREAS = [
   "Pedia Ward","ICU","6th Floor Ward","7th Floor Ward","Oncology Ward","Infectious Ward"
 ];
 
-const ANTIMICROBIAL_GROUPS = [
-  {
-    label:"Restricted / Special Authorization",
-    items:[
-      "Imipenem","Meropenem","Ertapenem","Doripenem",
-      "Aztreonam",
-      "Colistin",
-      "Linezolid",
-      "Vancomycin",
-      "Tigecycline",
-      "Ceftolozane-Tazobactam",
-      "Amphotericin",
-      "IV Fluconazole",
-      "Antiviral (specify)",
-      "Other antifungal (specify)",
-      "4th gen Cephalosporin (specify)",
-      "3rd gen Cephalosporin (specify)",
-      "Fluoroquinolone (specify)",
-      "Aminoglycoside (specify)"
-    ]
-  },
-  {
-    label:"Commonly Monitored",
-    items:[
-      "Gentamicin","Amikacin","Clindamycin"
-    ]
-  }
-];
-
+// Diagnosis options
 const DIAG_PRIMARY = ["Therapeutic","Prophylaxis","Neonates"];
 const DIAG_THERAPEUTIC = {
   "CNS": [], "EYE": [], "ENT": ["ENT","AOM"],
@@ -272,14 +242,14 @@ const DIAG_THERAPEUTIC = {
 const DIAG_PROPH = ["CNS","EYE","ENT","RESP","CVS","GI","SSTBJ","UTI","GUOB","No defined site."];
 const DIAG_NEONATES = ["MP-MAT","NEO-MP","CLD"];
 
-// Spelled-out labels (saved as codes)
+// Spelled-out labels (value === label)
 const INDICATIONS = [
-  { code:"CAI", label:"Community-Acquired Infection" },
-  { code:"HAI", label:"Healthcare-Associated Infection" },
-  { code:"SP",  label:"Surgical Prophylaxis" },
-  { code:"MP",  label:"Medical Prophylaxis" },
-  { code:"OTH", label:"Others" },
-  { code:"UNK", label:"Unknown" }
+  "Community-Acquired Infection",
+  "Healthcare Associated Infection",
+  "Surgical Prophylaxis",
+  "Medical Prophylaxis",
+  "Others",
+  "Unknown"
 ];
 const HAI_TYPES = ["CRBSI","VAP","CAUTI","HAP","CDAD","MDRO"];
 
@@ -299,13 +269,6 @@ const RESTRICTED_DRUGS = [
   "Ceftriaxone","Cefotaxime","Ceftazidime","Cefixime","Cefpodoxime",
   "Gentamicin","Amikacin","Clindamycin"
 ];
-function refillDrugOptions(selectEl, list){
-  if(!selectEl) return;
-  selectEl.innerHTML = "";
-  selectEl.appendChild(el("option",{value:""},[document.createTextNode("Select antimicrobial")]));
-  (list||[]).forEach(name=> selectEl.appendChild(el("option",{value:name},[document.createTextNode(name)])));
-}
-
 
 /* ======== Helpers ======== */
 const $ = s => document.querySelector(s);
@@ -330,6 +293,13 @@ function el(tag, attrs, kids){
 }
 const today = ()=> new Date().toISOString().slice(0,10);
 
+function fillSelectOptions(sel, options, placeholder="Select"){
+  if (!sel) return;
+  sel.innerHTML = "";
+  sel.appendChild(el("option",{value:""},[document.createTextNode(placeholder)]));
+  (options||[]).forEach(v => sel.appendChild(el("option",{value:String(v)},[document.createTextNode(String(v))])));
+}
+
 /* ======== UI builders ======== */
 function buildAreaList(){
   const s = $("#area"); s.innerHTML="";
@@ -340,21 +310,8 @@ function buildAreaList(){
 function buildAntimicrobialSelect(idBase){
   const s = el("select",{id:`${idBase}_drug`});
   s.appendChild(el("option",{value:""},[document.createTextNode("Select antimicrobial")]));
-  ANTIMICROBIAL_GROUPS.forEach(gr=>{
-    const og = el("optgroup",{label:gr.label});
-    gr.items.forEach(x=> og.appendChild(el("option",{value:x},[document.createTextNode(x)])));
-    s.appendChild(og);
-  });
-  const wrap = el("div");
-  const txt = el("input",{id:`${idBase}_drugSpecify`, class:"hidden", placeholder:"Specify exact drug (e.g., Cefepime, Levofloxacin)"});
-  s.addEventListener("change", ()=>{
-    const show = /\(specify\)$/i.test(s.value);
-    txt.classList.toggle("hidden", !show);
-  });
-  wrap.appendChild(s); wrap.appendChild(txt);
-  return wrap;
+  return s;
 }
-
 function buildMissedReasonDropdown(idBase){
   const s = el("select",{id:`${idBase}_missedReason`});
   s.appendChild(el("option",{value:""},[document.createTextNode("Select")]));
@@ -375,34 +332,23 @@ function buildAntimicrobialCard(idx){
   // Row 1: Class, Drug, Start date
   const row1 = el("div",{class:"grid cols-3"});
   const cellClass = el("div");
-  cellClass.append(
-    el("label",{class:"req"},[document.createTextNode("Monitored or Restricted")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_class`});
-      ["","Monitored","Restricted"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
-  );
+  const classSel = (()=>{const s=el("select",{id:`abx_${idx}_class`});
+    ["","Monitored","Restricted"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
+    return s;})();
+  cellClass.append(el("label",{class:"req"},[document.createTextNode("Monitored or Restricted")]), classSel);
 
   const cellDrug = el("div");
-  cellDrug.append(
-    el("label",{class:"req"},[document.createTextNode("Antimicrobial")]),
-    buildAntimicrobialSelect(`abx_${idx}`)
-  );
-  // Wire class -> antimicrobial options (runtime refill)
-  try{
-    const classSel = cellClass.querySelector('select');
-    const drugSel  = cellDrug.querySelector(`#abx_${idx}_drug`);
-    const drugSpec = cellDrug.querySelector(`#abx_${idx}_drugSpecify`);
-    if(classSel && drugSel){
-      const onCls = ()=>{
-        if(classSel.value === 'Monitored') refillDrugOptions(drugSel, MONITORED_DRUGS);
-        else if(classSel.value === 'Restricted') refillDrugOptions(drugSel, RESTRICTED_DRUGS);
-        else refillDrugOptions(drugSel, []);
-        if(drugSpec){ drugSpec.classList.add('hidden'); drugSpec.value=''; }
-      };
-      classSel.addEventListener('change', onCls);
-      setTimeout(onCls, 0);
-    }
-  }catch(e){ console.warn('Wiring class->drug failed', e); }
+  const drugSel = buildAntimicrobialSelect(`abx_${idx}`);
+  cellDrug.append(el("label",{class:"req"},[document.createTextNode("Antimicrobial")]), drugSel);
+
+  // Link class -> antimicrobial options
+  const onCls = ()=>{
+    if(classSel.value === 'Monitored') fillSelectOptions(drugSel, MONITORED_DRUGS, 'Antimicrobial');
+    else if(classSel.value === 'Restricted') fillSelectOptions(drugSel, RESTRICTED_DRUGS, 'Antimicrobial');
+    else fillSelectOptions(drugSel, [], 'Antimicrobial');
+  };
+  classSel.addEventListener('change', onCls); setTimeout(onCls,0);
+
   const cellStart= el("div");
   cellStart.append(
     el("label",{class:"req"},[document.createTextNode("Start date")]),
@@ -417,102 +363,87 @@ function buildAntimicrobialCard(idx){
     el("input",{id:`abx_${idx}_dose`,type:"number",min:"0",step:"0.001"})
   );
   const cellUnit = el("div");
-  cellUnit.append(
-    el("label",{class:"req"},[document.createTextNode("Unit")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_unit`});
-      ["","g","mg","IU","MU"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
-  );
+  const unitSel = (()=>{const s=el("select",{id:`abx_${idx}_unit`});
+    ["","g","mg","IU","MU"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
+    return s;})();
+  cellUnit.append(el("label",{class:"req"},[document.createTextNode("Unit")]), unitSel);
+
   const cellPerDay = el("div");
   cellPerDay.append(
     el("label",{class:"req"},[document.createTextNode("Doses/day")]),
     el("input",{id:`abx_${idx}_perday`,type:"number",min:"0",step:"1"})
   );
   const cellRoute = el("div");
-  cellRoute.append(
-    el("label",{class:"req"},[document.createTextNode("Route")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_route`});
-      ["","IM","IV","O","R"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
-  );
+  const routeSel = (()=>{const s=el("select",{id:`abx_${idx}_route`});
+    ["","IM","IV","O","R"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
+    return s;})();
+  cellRoute.append(el("label",{class:"req"},[document.createTextNode("Route")]), routeSel);
 
   // Row 3: Diagnosis, System/Site, Sub-site/Specific
   const diagTop = el("div",{class:"grid cols-3", style:"margin-top:12px"});
   const diag1 = el("div");
-  diag1.append(
-    el("label",{class:"req"},[document.createTextNode("Diagnosis")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_diagPrimary`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); DIAG_PRIMARY.forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v)])));
-      s.addEventListener("change",()=>updateDiagSecondary(idx)); return s;})()
-  );
-  const diagSys = el("div"); diagSys.append(el("label",{},[document.createTextNode("System / Site")]), (()=>{const s=el("select",{id:`abx_${idx}_diagSystem`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); s.disabled=true; return s;})())
-  const diagSub = el("div"); diagSub.append(el("label",{},[document.createTextNode("Sub-site / Specific")]), (()=>{const s=el("select",{id:`abx_${idx}_diagSub`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); s.disabled=true; return s;})())
+  const diagPrimary = (()=>{const s=el("select",{id:`abx_${idx}_diagPrimary`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); DIAG_PRIMARY.forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v)])));
+    s.addEventListener("change",()=>updateDiagSecondary(idx)); return s;})()
+  diag1.append(el("label",{class:"req"},[document.createTextNode("Diagnosis")]), diagPrimary);
+
+  const diagSys = el("div");
+  const diagSystemSel = (()=>{const s=el("select",{id:`abx_${idx}_diagSystem`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); s.disabled=true; return s;})()
+  diagSys.append(el("label",{},[document.createTextNode("System / Site")]), diagSystemSel);
+
+  const diagSub = el("div");
+  const diagSubSel = (()=>{const s=el("select",{id:`abx_${idx}_diagSub`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); s.disabled=true; return s;})()
+  diagSub.append(el("label",{},[document.createTextNode("Sub-site / Specific")]), diagSubSel);
   
-  // Row 4: Type of Indication, Reason in note?, Guidelines Compliance + Stop/Review documented
+  // Row 4: Type of Indication • HAI subtype • Reason in note? • Guidelines Compliance • Stop/Review Date Documented?
   const row4 = el("div",{class:"grid abx-row4", style:"margin-top:12px"});
   const cellInd = el("div");
-  cellInd.append(
-    el("label",{class:"req"},[document.createTextNode("Type of Indication")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_indication`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")]));
-      INDICATIONS.forEach(({code,label})=>s.appendChild(el("option",{value:code},[document.createTextNode(label)])));
-      s.addEventListener("change",()=>toggleHAI(idx)); return s;})()
-  );
-  const cellHai = el("div",{id:`abx_${idx}_haiWrap`, class:"hidden"});
-  cellHai.append(
-    el("label",{},[document.createTextNode("HAI subtype")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_haiType`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); HAI_TYPES.forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v)]))); return s;})()
-  );
+  const indicationSel = (()=>{const s=el("select",{id:`abx_${idx}_indication`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")]));
+    INDICATIONS.forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v)])));
+    s.addEventListener("change",()=>toggleHAI(idx)); return s;})()
+  cellInd.append(el("label",{class:"req"},[document.createTextNode("Type of Indication")]), indicationSel);
+
+  const cellHai = el("div",{id:`abx_${idx}_haiWrap", class:"hidden"});
+  const haiSel = (()=>{const s=el("select",{id:`abx_${idx}_haiType`}); s.appendChild(el("option",{value:""},[document.createTextNode("Select")])); HAI_TYPES.forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v)]))); return s;})()
+  cellHai.append(el("label",{},[document.createTextNode("HAI subtype")]), haiSel);
+
   const cellReasonNote = el("div");
-  cellReasonNote.append(
-    el("label",{class:"req"},[document.createTextNode("Reason in note?")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_reasonNote`});
-      ["","Yes","No"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
-  );
+  const reasonSel = (()=>{const s=el("select",{id:`abx_${idx}_reasonNote`});
+    ["","Yes","No"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
+    return s;})()
+  cellReasonNote.append(el("label",{class:"req"},[document.createTextNode("Reason in note?")]), reasonSel);
+
   const cellGuide = el("div");
-  cellGuide.append(
-    el("label",{class:"req"},[document.createTextNode("Guidelines Compliance")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_guide`});
-      ["","Yes","No","No Local Guidelines","No information"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
-  );
-  // NEW: Stop/Review Date Documented? moved to Row 4
+  const guideSel = (()=>{const s=el("select",{id:`abx_${idx}_guide`});
+    ["","Yes","No","No Local Guidelines","No information"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
+    return s;})()
+  cellGuide.append(el("label",{class:"req"},[document.createTextNode("Guidelines Compliance")]), guideSel);
+
   const cellStopDoc = el("div");
-  cellStopDoc.append(
-    el("label",{class:"req"},[document.createTextNode("Stop/Review Date Documented?")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_stopdoc`});
-      ["","Yes","No"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
-  );
+  const stopDocSel = (()=>{const s=el("select",{id:`abx_${idx}_stopdoc`});
+    ["","Yes","No"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
+    return s;})()
+  cellStopDoc.append(el("label",{class:"req"},[document.createTextNode("Stop/Review Date Documented?")]), stopDocSel);
 
   // Row 5: Missed doses (N + Reason), Treatment
   const row5 = el("div",{class:"grid cols-3", style:"margin-top:12px"});
-  // Group: N missed dose + Reason (visually related)
   const missWrap = el("div",{style:"grid-column: span 2;"});
-  missWrap.append(
-    el("label",{},[document.createTextNode("Missed doses")]),
-    (()=>{
-      const inner = el("div",{class:"grid cols-2"});
-      const n = el("div"); n.append(el("label",{},[document.createTextNode("N missed dose")]), el("input",{id:`abx_${idx}_missed`,type:"number",min:"0",step:"1",value:"0"}));
-      const r = el("div"); r.append(el("label",{},[document.createTextNode("Reason")]), buildMissedReasonDropdown(`abx_${idx}`));
-      inner.append(n,r);
-      // enable/disable reason based on N
-      setTimeout(()=>{
-        const num = inner.querySelector(`#abx_${idx}_missed`);
-        const sel = inner.querySelector(`#abx_${idx}_missedReason`);
-        const toggle = ()=>{ const v = Number(num.value||0); sel.disabled = v<=0; if(v<=0) sel.value=""; };
-        num.addEventListener('input', toggle); toggle();
-      });
-      return inner;
-    })()
-  );
+  const inner = el("div",{class:"grid cols-2"});
+  const n = el("div"); n.append(el("label",{},[document.createTextNode("N missed dose")]), el("input",{id:`abx_${idx}_missed`,type:"number",min:"0",step:"1",value:"0"}));
+  const r = el("div"); r.append(el("label",{},[document.createTextNode("Reason")]), buildMissedReasonDropdown(`abx_${idx}`));
+  inner.append(n,r);
+  setTimeout(()=>{
+    const num = inner.querySelector(`#abx_${idx}_missed`);
+    const sel = inner.querySelector(`#abx_${idx}_missedReason`);
+    const toggle = ()=>{ const v = Number(num.value||0); sel.disabled = v<=0; if(v<=0) sel.value=""; };
+    num.addEventListener('input', toggle); toggle();
+  });
+  missWrap.append(inner);
 
   const cellTreat = el("div");
-  cellTreat.append(
-    el("label",{class:"req"},[document.createTextNode("Treatment")]),
-    (()=>{const s=el("select",{id:`abx_${idx}_treat`});
-      ["","Empirical","Targeted"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
-      return s;})()
-  );
+  const treatSel = (()=>{const s=el("select",{id:`abx_${idx}_treat`});
+    ["","Empirical","Targeted"].forEach(v=>s.appendChild(el("option",{value:v},[document.createTextNode(v||"Select")]))) ;
+    return s;})()
+  cellTreat.append(el("label",{class:"req"},[document.createTextNode("Treatment")]), treatSel);
 
   row1.append(cellClass,cellDrug,cellStart);
   row2.append(cellDose,cellUnit,cellPerDay,cellRoute);
@@ -553,7 +484,7 @@ function updateDiagSecondary(idx){
 
 function toggleHAI(idx){
   const val = $(`#abx_${idx}_indication`).value;
-  $(`#abx_${idx}_haiWrap`).classList.toggle("hidden", val!=="HAI");
+  $(`#abx_${idx}_haiWrap`).classList.toggle("hidden", val!=="Healthcare Associated Infection");
 }
 
 /* ======== Init ======== */
@@ -585,17 +516,17 @@ function toggleHAI(idx){
     $("#cultureTypeOther").classList.toggle("hidden", e.target.value!=="Other");
   });
 
-  // Antimicrobial accordion
+  // Antimicrobial accordion (5)
   const acc = $("#abxAccordion");
   for(let i=0;i<5;i++) acc.appendChild(buildAntimicrobialCard(i));
 
-  // Micro organisms
+  // Micro organisms (3)
   const micro = $("#microWrap");
   for(let i=0;i<3;i++) micro.appendChild(buildMicroCard(i));
 
   // Buttons
   $("#btnReset").addEventListener("click", ()=>{ if(confirm("Clear all fields?")) location.reload(); });
-  ["#btnSubmit","#btnSubmit2"].forEach(sel=> $(sel).addEventListener("click", submitForm));
+  ["#btnSubmit","#btnSubmit2"].forEach(sel=> $(sel).addEventListener("click", doSubmit));
   $("#btnPreview").addEventListener("click", previewJSON);
 
   runTests();
@@ -605,102 +536,104 @@ function toggleHAI(idx){
 function err(m){ alert(m); }
 
 function collectAndValidate(){
-  const header = {
+  const audit = {
     auditor: $("#auditor").value.trim(),
     area: $("#area").value,
     date: $("#date").value,
     shift: $("#shift").value
   };
-  if(!header.auditor) return err("Auditor is required."), null;
-  if(!header.area) return err("Area is required."), null;
-  if(!header.date) return err("Date is required."), null;
-  if(!header.shift) return err("Shift is required."), null;
+  if(!audit.auditor) return err("Auditor is required."), null;
+  if(!audit.area) return err("Area is required."), null;
+  if(!audit.date) return err("Date is required."), null;
+  if(!audit.shift) return err("Shift is required."), null;
 
   // Age exclusivity
   const ay = $("#ageYears").value, am = $("#ageMonths").value, ad = $("#ageDays").value;
-  const ageFilled = [ay,am,ad].filter(x=> String(x).trim()!=="").length;
+  const ageFilled = [ay,am,ad].filter(x=> String(x).trim()!=='').length;
   if(ageFilled!==1) return err("Provide age in Years OR Months OR Days (exactly one)."), null;
-  const age = { years: ay? Number(ay): null, months: am? Number(am): null, days: ad? Number(ad): null };
-  if(age.years!==null && age.years<2) return err("Years is for ≥ 2 years only."), null;
-  if(age.months!==null && (age.months<1 || age.months>23)) return err("Months must be 1–23."), null;
-  if(age.days!==null && (age.days<0 || age.days>30)) return err("Days must be 0–30."), null;
+  const ageYears = ay? Number(ay): '';
+  const ageMonths = am? Number(am): '';
+  const ageDays = ad? Number(ad): '';
+  if(ageYears!=='' && ageYears<2) return err("Years is for ≥ 2 years only."), null;
+  if(ageMonths!=='' && (ageMonths<1 || ageMonths>23)) return err("Months must be 1–23."), null;
+  if(ageDays!=='' && (ageDays<0 || ageDays>30)) return err("Days must be 0–30."), null;
 
   // Biomarker
-  const biomarkerBased = $("#biomarkerYesNo").value || "No";
+  const biomarkerUsed = $("#biomarkerYesNo").value || "No";
   const biomarkerType = $("#biomarkerType").disabled ? "" : $("#biomarkerType").value;
   const biomarkerTypeOther = (!$("#biomarkerType").disabled && $("#biomarkerType").value==="Others") ? $("#biomarkerTypeOther").value.trim() : "";
-  const bioSample = $("#bioSample").disabled ? "" : $("#bioSample").value;
-  const bioSampleOther = (!$("#bioSample").disabled && $("#bioSample").value==="Others") ? $("#bioSampleOther").value.trim() : "";
-  if(biomarkerBased==="Yes" && !biomarkerType) return err("Specify biomarker type."), null;
-  if(biomarkerBased==="Yes" && !bioSample) return err("Specify biological sample."), null;
+  const fluidSample = $("#bioSample").disabled ? "" : $("#bioSample").value;
+  const fluidSampleOther = (!$("#bioSample").disabled && $("#bioSample").value==="Others") ? $("#bioSampleOther").value.trim() : "";
+  if(biomarkerUsed==="Yes" && !biomarkerType) return err("Specify biomarker type."), null;
+  if(biomarkerUsed==="Yes" && !fluidSample) return err("Specify biological sample."), null;
 
   // Culture
-  const cultureDone = $("#cultureDone").value || "";
-  const cultureType = $("#cultureType").disabled ? "" : $("#cultureType").value;
-  const cultureTypeOther = (!$("#cultureType").disabled && $("#cultureType").value==="Other") ? $("#cultureTypeOther").value.trim() : "";
-  if(cultureDone==="Yes" && !cultureType) return err("Select culture specimen type."), null;
+  const culture_done = $("#cultureDone").value || "";
+  const culture_specimen = $("#cultureType").disabled ? "" : $("#cultureType").value;
+  const culture_specimen_other = (!$("#cultureType").disabled && $("#cultureType").value==="Other") ? $("#cultureTypeOther").value.trim() : "";
+  if(culture_done==="Yes" && !culture_specimen) return err("Select culture specimen type."), null;
 
   // Antimicrobials
   const antimicrobials = [];
   for(let i=0;i<5;i++){
     const cls = $(`#abx_${i}_class`).value;
-    const drugSel = $(`#abx_${i}_drug`);
-    const drug = drugSel ? drugSel.value : "";
-    const drugSpecify = $(`#abx_${i}_drugSpecify`)?.value.trim() || "";
-    const start = $(`#abx_${i}_start`).value;
-    const dose = $(`#abx_${i}_dose`).value;
+    const drug = $(`#abx_${i}_drug`)?.value || "";
+    const startDate = $(`#abx_${i}_start`).value;
+    const unitDose = $(`#abx_${i}_dose`).value;
     const unit = $(`#abx_${i}_unit`).value;
-    const perday = $(`#abx_${i}_perday`).value;
+    const dosesPerDay = $(`#abx_${i}_perday`).value;
     const route = $(`#abx_${i}_route`).value;
     const diagP = $(`#abx_${i}_diagPrimary`).value;
     const diagS = $(`#abx_${i}_diagSystem`).value;
     const diagSub = $(`#abx_${i}_diagSub`).value;
-    const indic = $(`#abx_${i}_indication`).value; // code (e.g., CAI)
-    const haiType = $(`#abx_${i}_haiType`).value;
-    const reasonNote = $(`#abx_${i}_reasonNote`).value;
-    const guide = $(`#abx_${i}_guide`).value;
-    const stopdoc = $(`#abx_${i}_stopdoc`).value;
-    const missed = $(`#abx_${i}_missed`).value || "0";
+    const indication = $(`#abx_${i}_indication`).value; // spelled-out
+    const haiSubtype = $(`#abx_${i}_haiType`).value;
+    const reasonInNote = $(`#abx_${i}_reasonNote`).value;
+    const guidelinesCompliance = $(`#abx_${i}_guide`).value;
+    const stopReviewDocumented = $(`#abx_${i}_stopdoc`).value;
+    const missedN = $(`#abx_${i}_missed`).value || "0";
     const missedReason = $(`#abx_${i}_missedReason`).value || "";
-    const treat = $(`#abx_${i}_treat`).value;
+    const treatment = $(`#abx_${i}_treat`).value;
 
-    const any = [drug, start, dose, unit, perday, route, diagP, indic, treat].some(v=> (v??"") !== "");
+    const any = [drug, startDate, unitDose, unit, dosesPerDay, route, diagP, indication, treatment].some(v=> (v??"") !== "");
     if(!any) continue;
 
     if(!cls) return err(`Antimicrobial ${i+1}: select Monitored/Restricted.`), null;
     if(!drug) return err(`Antimicrobial ${i+1}: select drug.`), null;
-    if(/\(specify\)$/i.test(drug) && false) return err(`Antimicrobial ${i+1}: specify exact agent for "${drug}".`), null;
-    if(!start) return err(`Antimicrobial ${i+1}: start date is required.`), null;
-    if(!dose || Number(dose)<=0) return err(`Antimicrobial ${i+1}: enter positive unit dose.`), null;
+    if(!startDate) return err(`Antimicrobial ${i+1}: start date is required.`), null;
+    if(!unitDose || Number(unitDose)<=0) return err(`Antimicrobial ${i+1}: enter positive unit dose.`), null;
     if(!unit) return err(`Antimicrobial ${i+1}: select dose unit.`), null;
-    if(!perday || Number(perday)<=0) return err(`Antimicrobial ${i+1}: doses/day must be > 0.`), null;
+    if(!dosesPerDay || Number(dosesPerDay)<=0) return err(`Antimicrobial ${i+1}: doses/day must be > 0.`), null;
     if(!route) return err(`Antimicrobial ${i+1}: select route.`), null;
     if(!diagP) return err(`Antimicrobial ${i+1}: diagnosis required.`), null;
     if(diagP==="Therapeutic" && !diagS) return err(`Antimicrobial ${i+1}: select system/site.`), null;
     if(diagP==="Therapeutic" && (DIAG_THERAPEUTIC[diagS]||[]).length && !diagSub) return err(`Antimicrobial ${i+1}: select sub-site.`), null;
-    if(!indic) return err(`Antimicrobial ${i+1}: indication type required.`), null;
-    if(indic==="HAI" && !haiType) return err(`Antimicrobial ${i+1}: choose HAI subtype.`), null;
-    if(!reasonNote) return err(`Antimicrobial ${i+1}: Reason in note required.`), null;
-    if(!guide) return err(`Antimicrobial ${i+1}: Guidelines Compliance required.`), null;
-    if(!treat) return err(`Antimicrobial ${i+1}: Treatment (Empirical/Targeted) required.`), null;
-    if(Number(missed)>0 && !missedReason) return err(`Antimicrobial ${i+1}: select reason for missed doses.`), null;
+    if(!indication) return err(`Antimicrobial ${i+1}: indication type required.`), null;
+    if(indication==="Healthcare Associated Infection" && !haiSubtype) return err(`Antimicrobial ${i+1}: choose HAI subtype.`), null;
+    if(!reasonInNote) return err(`Antimicrobial ${i+1}: Reason in note required.`), null;
+    if(!guidelinesCompliance) return err(`Antimicrobial ${i+1}: Guidelines Compliance required.`), null;
+    if(!treatment) return err(`Antimicrobial ${i+1}: Treatment (Empirical/Targeted) required.`), null;
+    if(Number(missedN)>0 && !missedReason) return err(`Antimicrobial ${i+1}: select reason for missed doses.`), null;
 
     antimicrobials.push({
       class: cls,
       drug,
-      drugSpecify: /\(specify\)$/i.test(drug) ? drugSpecify : "",
-      startDate: start,
-      unitDose: Number(dose),
-      unit, dosesPerDay: Number(perday), route,
-      diagnosis: { primary: diagP, system: diagS || "", sub: diagSub || "" },
-      indication: indic, // saved as code (e.g., CAI)
-      haiSubtype: indic==="HAI" ? haiType : "",
-      reasonInNote: reasonNote,
-      guidelinesCompliance: guide,
-      stopReview: { documented: stopdoc || "" },
-      missedDoses: Number(missed),
+      startDate,
+      unitDose: Number(unitDose),
+      unit,
+      dosesPerDay: Number(dosesPerDay),
+      route,
+      diagnosis: diagP,
+      systemSite: diagS || "",
+      subSite: diagSub || "",
+      indication, // spelled-out
+      haiSubtype: indication==="Healthcare Associated Infection" ? haiSubtype : "",
+      reasonInNote,
+      guidelinesCompliance,
+      stopReviewDocumented,
+      missedN: Number(missedN),
       missedReason,
-      treatment: treat
+      treatment
     });
   }
   if(antimicrobials.length===0) return err("Enter at least one antimicrobial card."), null;
@@ -708,129 +641,84 @@ function collectAndValidate(){
   // Microorganisms (optional)
   const microorganisms = [];
   for(let i=0;i<3;i++){
-    const org = $(`#micro_${i}_org`).value.trim();
-    const res = $(`#micro_${i}_res`).value;
+    const organism = $(`#micro_${i}_org`).value.trim();
+    const resistance = $(`#micro_${i}_res`).value;
     const note = $(`#micro_${i}_note`).value.trim();
-    if(org || res || note) microorganisms.push({ organism: org, resistance: res, note });
+    if(organism || resistance || note) microorganisms.push({ organism, resistance, note });
   }
 
   return {
     formType: "AMS Audit",
-    header,
-    patient: { hospitalNumber: $("#hospNo").value.trim(), age },
-    diagnostics: {
-      biomarker: { based: biomarkerBased, type: biomarkerType, typeOther: biomarkerTypeOther, sample: bioSample, sampleOther: bioSampleOther },
-      culture: { done: cultureDone, specimen: cultureType, specimenOther: cultureTypeOther }
+    audit,
+    patient: { hospNo: $("#hospNo").value.trim(), ageYears, ageMonths, ageDays },
+    tests: {
+      biomarkerUsed, biomarkerType, fluidSample,
+      cultureDone: culture_done, cultureSpecimen: culture_specimen,
+      biomarkerTypeOther, fluidSampleOther, cultureSpecimenOther: culture_specimen_other
     },
+    history: { prevHosp3mo: $("#prevHosp").value || "", prevAbx1mo: $("#prevAbx").value || "" },
     antimicrobials,
-    microorganisms,
-    history: { prevHospitalization3mo: $("#prevHosp").value || "", prevAntibiotic1mo: $("#prevAbx").value || "" },
-    meta: { timestamp: new Date().toISOString() }
+    microorganisms
   };
 }
 
 function previewJSON(){
   const payload = collectAndValidate(); if(!payload) return;
   const w = window.open("", "_blank");
-  w.document.write("<pre style='padding:16px;color:#e5e7eb;background:#0b1224;'>"+String(JSON.stringify(payload,null,2)).replace(/[<>&]/g,s=>({"<":"&lt;",
-  ">":"&gt;","&":"&amp;"}[s]))+"</pre>");
+  const safe = String(JSON.stringify(payload,null,2)).replace(/[<>&]/g, s=> ({"<":"&lt;", ">":"&gt;","&":"&amp;"}[s]) );
+  w.document.write("<pre style='padding:16px;color:#e5e7eb;background:#0b1224;'>"+ safe +"</pre>");
 }
 
-async function submitForm(payload){
-  const start = Date.now();
+/* ======== Submit (fixed) ======== */
+async function doSubmit(){
+  const payload = collectAndValidate();
+  if(!payload) return;
   try{
-    const res = await fetch(ENDPOINT, {
+    const res = await fetch(BACKEND_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain; charset=utf-8' }, // avoid CORS preflight
       body: JSON.stringify(payload)
     });
-    const elapsed = Date.now() - start;
     if(!res.ok){
       const text = await res.text().catch(()=>'<no-body>');
-      throw new Error(`HTTP ${res.status} ${res.statusText} after ${elapsed}ms — Body: ${text.slice(0,300)}`);
+      throw new Error(`HTTP ${res.status} ${res.statusText} — Body: ${text.slice(0,300)}`);
     }
-    // Attempt JSON parse; fall back to text
-    const ct = res.headers.get('content-type') || '';
-    if(ct.includes('application/json')){
-      return await res.json();
-    } else {
-      const text = await res.text();
-      try { return JSON.parse(text); } catch { return { ok:false, error:'Non-JSON response', raw:text }; }
-    }
+    let out;
+    const ct = res.headers.get('content-type')||'';
+    if(ct.includes('application/json')) out = await res.json();
+    else { const t = await res.text(); try{ out = JSON.parse(t); } catch{ out = {ok:true,message:t}; } }
+    alert('Submitted.');
   }catch(err){
-    console.error('[Submit] Network/CORS error:', err);
-    throw err; // upstream will show toast
+    console.error('[Submit] error', err); alert('Submission failed: '+ (err && err.message ? err.message : err));
   }
-},body:JSON.stringify(payload)});
-    const text = await res.text();
-    let msg="Submitted."; try{const j=JSON.parse(text); if(j.message) msg=j.message;}catch{}
-    alert(msg);
-  }catch(e){ console.error(e); alert("Submission failed. Check network/CORS/Apps Script logs."); }
 }
 
-/* ======== Lightweight Self-tests ======== */
+/* ======== Lightweight Self-tests (expanded) ======== */
 function runTests(){
   const results = [];
   try{ const L = el('label',[document.createTextNode('OK')]); results.push('✓ el(tag, [kids]) works'); } catch(e){ results.push('✗ el kids-2arg FAILED: '+e); }
   try{ const frag = document.createDocumentFragment(); frag.appendChild(buildAntimicrobialCard(0)); results.push('✓ buildAntimicrobialCard(0)'); } catch(e){ results.push('✗ buildAntimicrobialCard FAILED: '+e); }
-  try{
-    const dummy = buildMissedReasonDropdown('x'); if(dummy && dummy.nodeName==='SELECT') results.push('✓ missed reason dropdown'); else results.push('✗ missed reason dropdown');
-  }catch(e){ results.push('✗ missed reason test FAILED: '+e); }
+  try{ const dummy = buildMissedReasonDropdown('x'); if(dummy && dummy.nodeName==='SELECT') results.push('✓ missed reason dropdown'); else results.push('✗ missed reason dropdown'); }catch(e){ results.push('✗ missed reason test FAILED: '+e); }
+  // New tests
+  try{ // diagnosis map
+    const tmp = document.createElement('div'); tmp.appendChild(buildAntimicrobialCard(9));
+    const p = tmp.querySelector('#abx_9_diagPrimary'); const s = tmp.querySelector('#abx_9_diagSystem'); const sub = tmp.querySelector('#abx_9_diagSub');
+    p.value='Therapeutic'; p.dispatchEvent(new Event('change')); s.value='RESP'; s.dispatchEvent(new Event('change'));
+    const hasPneu = Array.from(sub.options).some(o=>o.value==='Pneu');
+    results.push(hasPneu? '✓ diag cascade' : '✗ diag cascade');
+  }catch(e){ results.push('✗ diag cascade FAILED: '+e); }
+  try{ // monitored/restricted
+    const tmp = document.createElement('div'); tmp.appendChild(buildAntimicrobialCard(8));
+    const cls = tmp.querySelector('#abx_8_class'); const drug = tmp.querySelector('#abx_8_drug');
+    cls.value='Monitored'; cls.dispatchEvent(new Event('change'));
+    const hasMero = Array.from(drug.options).some(o=>o.value==='Meropenem');
+    cls.value='Restricted'; cls.dispatchEvent(new Event('change'));
+    const hasCeftriax = Array.from(drug.options).some(o=>o.value==='Ceftriaxone');
+    results.push(hasMero && hasCeftriax ? '✓ class→drug lists' : '✗ class→drug lists');
+  }catch(e){ results.push('✗ class→drug FAILED: '+e); }
   const badge = document.getElementById('testBadge');
   if(badge) badge.textContent = 'Tests: '+results.join('  |  ');
 }
-// === Dropdown fix block: helpers & maps ===
-(function(){
-  if (typeof fillSelectOptions !== 'function') {
-    window.fillSelectOptions = function(sel, options, placeholder){
-      placeholder = placeholder || 'Select';
-      if (!sel) return;
-      sel.innerHTML = '';
-      sel.appendChild(el('option',{value:''},[document.createTextNode(placeholder)]));
-      (options||[]).forEach(function(v){ sel.appendChild(el('option',{value:v},[document.createTextNode(v)])); });
-    };
-  }
-  window.DIAG_SYSTEMS = {
-    'Therapeutic': ['CNS','EYE','ENT','RESP','CVS','GI','SSTBJ','UTI','GUOB','No defined site.'],
-    'Prophylaxis': ['CNS','EYE','ENT','RESP','CVS','GI','SSTBJ','UTI','GUOB','No defined site.'],
-    'Neonates': ['MP-MAT','NEO-MP','CLD']
-  };
-  window.DIAG_SUBS = {
-    'ENT': ['ENT','AOM'],
-    'RESP': ['LUNG','URTI','Bron','Pneu','COVID-19','TB','CF'],
-    'GI': ['GI','IA','CDIF'],
-    'SSTBJ': ['SST','BJ'],
-    'UTI': ['Cys','Pye','ASB'],
-    'GUOB': ['OBGY','GUM','Syph'],
-    'No defined site.': ['BAC','SEPSIS','Malaria','HIV','PUO','PUO-HO','FN','LYMPH','Sys-DI','Other','UNK','PROK']
-  };
-  window.updateDiagSecondary = function(idx){
-    var p = document.getElementById('abx_'+idx+'_diagPrimary');
-    var sys = document.getElementById('abx_'+idx+'_diagSystem');
-    var sub = document.getElementById('abx_'+idx+'_diagSub');
-    if (!p || !sys || !sub) return;
-    var bucket = p.value || '';
-    var systems = (window.DIAG_SYSTEMS[bucket]||[]);
-    window.fillSelectOptions(sys, systems, 'Select');
-    sys.disabled = systems.length === 0;
-    var setSubs = function(){
-      var sVal = sys.value || '';
-      var subs = (bucket === 'Therapeutic') ? (window.DIAG_SUBS[sVal]||[]) : [];
-      window.fillSelectOptions(sub, subs, subs.length ? 'Select' : '—');
-      sub.disabled = subs.length === 0;
-    };
-    if (!sys.__bindSubs){ sys.addEventListener('change', setSubs); sys.__bindSubs = true; }
-    setSubs();
-  };
-  window.toggleHAI = function(idx){
-    var ind = document.getElementById('abx_'+idx+'_indication');
-    var wrap = document.getElementById('abx_'+idx+'_haiWrap');
-    if (!ind || !wrap) return;
-    var isHAI = (ind.value === 'Healthcare Associated Infection' || ind.value === 'HAI');
-    wrap.classList.toggle('hidden', !isHAI);
-  };
-})();
-// === end dropdown fix block ===
 </script>
 </body>
 </html>
